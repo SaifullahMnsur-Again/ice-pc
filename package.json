@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "ice-pc",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.5.1",
+    "autoprefixer": "^10.4.14",
+    "framer-motion": "^10.16.4",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43",
+    "papaparse": "^5.4.1",
+    "postcss": "^8.4.27",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^6.14.2",
+    "tailwindcss": "^3.3.3",
+    "vite": "^6.3.5"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && vite gh-pages"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
+  }
+}

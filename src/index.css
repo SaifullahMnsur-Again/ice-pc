@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #111827;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Codeforces rank colors */
+.newbie { color: #808080; }
+.pupil { color: #008000; }
+.specialist { color: #00FFFF; }
+.expert { color: #0000FF; }
+.candidate-master { color: #9400D3; }
+.master { color: #FF7F00; }
+.international-master { color: #FF7F00; }
+.grandmaster { color: #FF0000; }
+.international-grandmaster { color: #FF0000; }
+.legendary-grandmaster { color: #FF0000; }
+
+/* Table styles */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid #374151;
+  padding: 12px;
+  text-align: left;
+  color: #F3F3F3;
+}
+
+th {
+  background: linear-gradient(to right, #4b0082, #6b7280);
+  font-weight: 600;
+}
+
+tr:hover {
+  background-color: #374151;
+}
+
+/* Card styles */
+.card {
+  background: linear-gradient(to bottom right, #1a202c, #2d3748);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Text truncation */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Responsive countdown grid */
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .sm\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Hover animations */
+button:hover, a[role="button"]:hover {
+  transform: scale(1.05);
+  transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+/* Fade-in animation */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition: all 0.3s ease;
+}
