@@ -8,6 +8,7 @@ import Contests from './pages/Contests';
 
 function App() {
   const location = useLocation();
+  console.log('Current pathname:', location.pathname); // Debug log
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
