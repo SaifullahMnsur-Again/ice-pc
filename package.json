@@ -20,8 +20,8 @@
   "scripts": {
     "dev": "vite",
     "preview": "vite preview",
-    "build": "vite build && cp dist/index.html dist/404.html",
-    "deploy": "vite build && cp dist/index.html dist/404.html && gh-pages -d dist"
+    "build": "vite build && copy dist\\index.html dist\\404.html",
+    "deploy": "vite build && copy dist\\index.html dist\\404.html && gh-pages -d dist"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
