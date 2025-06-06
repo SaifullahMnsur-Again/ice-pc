@@ -3,6 +3,7 @@
   "name": "ice-pc",
   "version": "1.0.0",
   "private": true,
+  "homepage": "https://saifullahmnsur-again.github.io/ice-pc",
   "dependencies": {
     "framer-motion": "^4.1.17",
     "moment": "^2.29.4",
