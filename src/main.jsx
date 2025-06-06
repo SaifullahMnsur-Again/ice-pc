@@ -5,12 +5,11 @@ import { AnimatePresence } from 'framer-motion';
 import App from './App';
 import './index.css';
 
-console.log('main.jsx: Initializing app mount');
-
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null, errorInfo: null };
 
   static getDerivedStateFromError(error) {
+    console.error('ErrorBoundary caught error:', error);
     return { hasError: true, error };
   }
 
@@ -54,7 +53,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename="/ice-pc">
         <AnimatePresence mode="wait">
           <App />
         </AnimatePresence>
@@ -62,5 +61,3 @@ root.render(
     </ErrorBoundary>
   </React.StrictMode>
 );
-
-console.log('main.jsx: App mounted successfully');

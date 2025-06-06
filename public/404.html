@@ -5,7 +5,7 @@
     <title>Single Page Apps for GitHub Pages</title>
     <script>
       const path = window.location.pathname;
-      sessionStorage.setItem('redirect', path);
+      sessionStorage.setItem('redirect', path.replace(/^\/ice-pc/, ''));
       window.location = '/ice-pc/';
     </script>
   </head>

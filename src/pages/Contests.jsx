@@ -240,7 +240,7 @@ function Contests() {
     setCountdown(null);
     setError(null);
     setIsLoadingRank(false);
-    navigate(id ? `/contests?id=${id}` : '/contests');
+    navigate(id ? `/contests?id=${id}` : '/contests'); // Updated navigate
   };
 
   const handleRankFilter = e => {
@@ -425,7 +425,6 @@ function Contests() {
                               const colName = rankData.headers[4 + colIndex];
                               const submission = row[colName] || '';
                               const { isSolved, minutes, incorrect } = parseSubmission(submission);
-                              console.log(`Submission for ${colName}: ${submission}, Parsed:`, { isSolved, minutes, incorrect });
                               if (isSolved) {
                                 totalMinutes += minutes;
                                 totalIncorrect += incorrect;

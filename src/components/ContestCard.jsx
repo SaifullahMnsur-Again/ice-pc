@@ -64,7 +64,7 @@ function ContestCard({ contest }) {
 
   return (
     <Link
-      to={`/contests?id=${contest.id}`}
+      to={`/contests?id=${contest.id}`} // Relative path
       className="block bg-gradient-to-br from-gray-800/90 to-gray-900/30 backdrop-blur-lg p-6 rounded-2xl shadow-xl border border-gray-700/70 group transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 max-w-2xl mx-auto"
     >
       <h3 className="text-2xl font-bold font-['Inter'] text-indigo-300 mb-4 flex items-center gap-2 group-hover:text-indigo-200 transition-colors">

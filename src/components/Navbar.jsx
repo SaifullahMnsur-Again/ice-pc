@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useState, useLayoutEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
+// Relative paths since basename="/ice-pc" handles the base path
 const navLinks = [
   { path: '/', label: 'Home' },
   { path: '/coders', label: 'Coders' },
@@ -11,27 +12,32 @@ const navLinks = [
 function Navbar() {
   const location = useLocation();
   const [markerStyle, setMarkerStyle] = useState({ left: 0, width: 0 });
-  const [animationDirection, setAnimationDirection] = useState('left');
   const navRef = useRef(null);
 
   useLayoutEffect(() => {
-    const currentIndex = navLinks.findIndex(link => link.path === location.pathname);
-    const prevIndex = sessionStorage.getItem('prevNavIndex')
-      ? parseInt(sessionStorage.getItem('prevNavIndex'))
-      : currentIndex;
+    const updateMarker = () => {
+      // Find the active link using the 'active' class applied by NavLink
+      const activeLink = navRef.current?.querySelector('a.active');
 
-    if (currentIndex !== prevIndex && currentIndex !== -1) {
-      setAnimationDirection(currentIndex > prevIndex ? 'left' : 'right');
-      sessionStorage.setItem('prevNavIndex', currentIndex);
-    }
+      if (activeLink) {
+        const { offsetLeft, offsetWidth } = activeLink;
+        setMarkerStyle({ left: offsetLeft, width: offsetWidth });
+      } else {
+        // Default to the first link (Home) for unmatched routes
+        const defaultLink = navRef.current?.querySelectorAll('a')[0];
+        if (defaultLink) {
+          const { offsetLeft, offsetWidth } = defaultLink;
+          setMarkerStyle({ left: offsetLeft, width: offsetWidth });
+        } else {
+          setMarkerStyle({ left: 0, width: 0 });
+        }
+      }
+    };
 
-    const activeLink = navRef.current?.querySelector('a.active');
-    if (activeLink) {
-      const { offsetLeft, offsetWidth } = activeLink;
-      setMarkerStyle({ left: offsetLeft, width: offsetWidth });
-    } else {
-      setMarkerStyle({ left: 0, width: 0 });
-    }
+    // Run immediately and on resize
+    updateMarker();
+    window.addEventListener('resize', updateMarker);
+    return () => window.removeEventListener('resize', updateMarker);
   }, [location.pathname]);
 
   return (
@@ -47,6 +53,7 @@ function Navbar() {
               <li key={link.path}>
                 <NavLink
                   to={link.path}
+                  end={link.path === '/'} // Exact match for root path
                   className={({ isActive }) =>
                     `relative text-lg transition-all duration-300 px-2 py-1 ${
                       isActive ? 'text-indigo-300 active' : 'text-gray-200 hover:text-indigo-200'
@@ -60,7 +67,6 @@ function Navbar() {
           </ul>
           <motion.div
             className="absolute bottom-0 h-0.5 bg-indigo-400 rounded-full"
-            style={{ transformOrigin: animationDirection === 'left' ? 'left' : 'right' }}
             animate={{ left: markerStyle.left, width: markerStyle.width }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           />
