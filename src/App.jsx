@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
@@ -9,14 +9,15 @@ import Contests from './pages/Contests';
 
 function App() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const redirectPath = sessionStorage.getItem('redirect');
-    if (redirectPath && redirectPath !== location.pathname) {
+    if (redirectPath && redirectPath !== location.pathname.replace(/^\/ice-pc/, '')) {
       sessionStorage.removeItem('redirect');
-      window.history.replaceState(null, '', redirectPath);
+      navigate(redirectPath === '/' ? '/' : redirectPath, { replace: true });
     }
-  }, [location]);
+  }, [location, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">

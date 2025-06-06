@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <title>Redirecting...</title>
     <script>
+      // Store the full path after /ice-pc/ (e.g., /coders, /contests)
       const path = window.location.pathname;
-      sessionStorage.setItem('redirect', path.replace(/^\/ice-pc/, ''));
+      const redirectPath = path.startsWith('/ice-pc/') ? path.replace(/^\/ice-pc/, '') : '/';
+      sessionStorage.setItem('redirect', redirectPath);
+      // Redirect to /ice-pc/ with hash to avoid server-side routing issues
       window.location.href = '/ice-pc/';
     </script>
   </head>
