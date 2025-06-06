@@ -15,7 +15,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="/assets/images/facebook.png"
+                src="ice-pc/assets/images/facebook.png"
                 alt="ICE PC Facebook Page"
                 className="w-10 h-10 object-contain invert"
               />
@@ -30,7 +30,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="/assets/images/group.png"
+                src="ice-pc/assets/images/group.png"
                 alt="ICE PC Facebook Group"
                 className="w-10 h-10 object-contain invert"
               />
@@ -45,7 +45,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="/assets/images/messenger.png"
+                src="ice-pc/assets/images/messenger.png"
                 alt="ICE PC Messenger Group"
                 className="w-10 h-10 object-contain invert"
               />
@@ -66,7 +66,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="/assets/images/github.png"
+                src="ice-pc/assets/images/github.png"
                 alt="GitHub Profile"
                 className="w-10 h-10 object-contain invert"
               />
@@ -81,7 +81,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="/assets/images/codeforces.png"
+                src="ice-pc/assets/images/codeforces.png"
                 alt="Codeforces Profile"
                 className="w-10 h-10 object-contain"
               />
@@ -96,7 +96,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="/assets/images/leetcode.png"
+                src="ice-pc/assets/images/leetcode.png"
                 alt="LeetCode Profile"
                 className="w-10 h-10 object-contain invert"
               />
@@ -111,7 +111,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="/assets/images/linkedin.png"
+                src="ice-pc/assets/images/linkedin.png"
                 alt="LinkedIn Profile"
                 className="w-10 h-10 object-contain invert"
               />
