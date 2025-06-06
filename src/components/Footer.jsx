@@ -30,7 +30,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="/assets/images/facebook.png"
+                src="/assets/images/group.png"
                 alt="ICE PC Facebook Group"
                 className="w-10 h-10 object-contain invert"
               />
@@ -90,7 +90,7 @@ function Footer() {
           </div>
           <div className="flex flex-col items-center">
             <a
-              href="https://leetcode.com/SaifullahMnsur"
+              href="https://leetcode.com/u/SaifullahMnsur"
               target="_blank"
               rel="noopener noreferrer"
               className="transform hover:scale-105 transition-all duration-300"
@@ -121,6 +121,8 @@ function Footer() {
         </div>
         <a
           href="https://github.com/SaifullahMnsur/ice-pc"
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-indigo-400 hover:text-indigo-100 transition-colors duration-300 font-['Inter'] text-sm"
         >
           View Source Code on GitHub

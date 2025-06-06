@@ -1,49 +1,46 @@
 export function parseDuration(duration) {
   if (!duration || typeof duration !== 'string') return 0;
-  const [days = '0', hours = '0', minutes = '0', seconds = '0'] = duration.split(':').map(Number);
-  return (days * 24 * 3600) + (hours * 3600) + (minutes * 60) + seconds;
+  const match = duration.match(/^(\d+):(\d{2}):(\d{2})$/);
+  if (!match) {
+    console.error(`Invalid duration format: ${duration}`);
+    return 0;
+  }
+  const days = parseInt(match[1], 10);
+  const hours = parseInt(match[2], 10);
+  const minutes = parseInt(match[3], 10);
+  return (days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60);
 }
 
 export function formatDurationToText(duration) {
-  if (!duration || typeof duration !== 'string') return 'Unknown duration';
-  const [days = '0', hours = '0', minutes = '0', seconds = '0'] = duration.split(':').map(Number);
-  const parts = [];
-  if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
-  if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
-  if (minutes > 0) parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
-  if (seconds > 0) parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
-  return parts.length > 0 ? parts.join(' ') : 'No duration';
+  if (!duration || typeof duration !== 'string') return 'Unknown';
+  const match = duration.match(/^(\d+):(\d{2}):(\d{2})$/);
+  if (!match) return 'Invalid';
+  const days = parseInt(match[1], 10);
+  const hours = parseInt(match[2], 10);
+  const minutes = parseInt(match[3], 10);
+  return `${days} day${days !== 1 ? 's' : ''}, ${hours} hour${hours !== 1 ? 's' : ''}, ${minutes} minute${minutes !== 1 ? 's' : ''}`;
 }
 
+// Placeholder for parseSubmission (adjust as needed)
 export function parseSubmission(submission) {
   if (!submission || typeof submission !== 'string') {
-    return { isSolved: false, minutes: 0, incorrect: 0 };
+    return { isSolved: false, minutes: 0, incorrect: 0, seconds: 0 };
   }
-
-  // Match "HH:MM:SS\n(-N)" for solved with incorrect submissions
-  const solvedWithIncorrectMatch = submission.match(/^(\d{1,2}:\d{2}:\d{2})\n\(-(\d+)\)$/);
-  if (solvedWithIncorrectMatch) {
-    const time = solvedWithIncorrectMatch[1];
-    const [hours, minutes, seconds] = time.split(':').map(Number);
-    const totalMinutes = hours * 60 + minutes + seconds / 60;
-    const incorrect = parseInt(solvedWithIncorrectMatch[2]);
-    return { isSolved: true, minutes: totalMinutes, incorrect };
+  const match = submission.match(/(\d+):(\d{2})\+(\d+)/);
+  if (match) {
+    const minutes = parseInt(match[1], 10);
+    const seconds = parseInt(match[2], 10);
+    const incorrect = parseInt(match[3], 10);
+    return {
+      isSolved: true,
+      minutes: minutes + Math.floor(seconds / 60),
+      incorrect,
+      seconds: minutes * 60 + seconds,
+    };
   }
-
-  // Match HH:MM:SS for solved without incorrect submissions
-  const solvedMatch = submission.match(/^(\d{1,2}:\d{2}:\d{2})$/);
-  if (solvedMatch) {
-    const time = solvedMatch[1];
-    const [hours, minutes, seconds] = time.split(':').map(Number);
-    const totalMinutes = hours * 60 + minutes + seconds / 60;
-    return { isSolved: true, minutes: totalMinutes, incorrect: 0 };
-  }
-
-  // Match (-N) for unsolved with incorrect submissions
-  const incorrectMatch = submission.match(/^\(-(\d+)\)$/);
+  const incorrectMatch = submission.match(/\+(\d+)/);
   if (incorrectMatch) {
-    return { isSolved: false, minutes: 0, incorrect: parseInt(incorrectMatch[1]) };
+    return { isSolved: false, minutes: 0, incorrect: parseInt(incorrectMatch[1], 10), seconds: 0 };
   }
-
-  return { isSolved: false, minutes: 0, incorrect: 0 };
+  return { isSolved: false, minutes: 0, incorrect: 0, seconds: 0 };
 }

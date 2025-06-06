@@ -24,6 +24,7 @@ function Contests() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  // Fetch contests from CSV
   useEffect(() => {
     async function fetchContests() {
       try {
@@ -51,7 +52,7 @@ function Contests() {
             problem_setters: row.problem_setters || 'N/A',
             coders: row.coders || '',
           }))
-          .sort((a, b) => moment.tz(b.date, 'Asia/Dhaka').diff(moment.tz(a.date, 'Asia/Dhaka')));
+          .sort((a, b) => moment.tz(b.date, 'YYYY-MM-DD HH:mm', 'Asia/Dhaka').diff(moment.tz(a.date, 'YYYY-MM-DD HH:mm', 'Asia/Dhaka')));
         if (data.length === 0) throw new Error('No contests found');
         setContests(data);
         const id = searchParams.get('id');
@@ -66,9 +67,11 @@ function Contests() {
     fetchContests();
   }, [searchParams]);
 
+  // Update contest status, countdown, and fetch rank data
   useEffect(() => {
     if (!selectedContest) return;
 
+    // Fetch coders for Vjudge-to-Name mapping
     async function fetchCoders() {
       if (!selectedContest.coders) return;
       try {
@@ -94,33 +97,104 @@ function Contests() {
     }
     fetchCoders();
 
-    const startDate = moment.tz(selectedContest.date, 'Asia/Dhaka');
-    const durationSeconds = parseDuration(selectedContest.duration);
-    const endDate = startDate.clone().add(durationSeconds, 'seconds');
-    const now = moment.tz('Asia/Dhaka');
+    // Fetch rank data for ranked contests
+    async function fetchRankData() {
+      try {
+        setIsLoadingRank(true);
+        setError(null);
+        const response = await fetchWithRetry(selectedContest.rank_sheet);
+        const csv = await response.text();
+        if (!csv.trim()) throw new Error('No rank data available');
+        const parsed = Papa.parse(csv.trim(), {
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: false,
+        });
+        if (parsed.errors.length > 0) throw new Error(`Rank CSV parsing error: ${parsed.errors[0].message}`);
+        const data = parsed.data;
+        if (!data || data.length === 0) throw new Error('No valid data rows found');
+        const headers = Object.keys(data[0] || {});
+        if (headers.length < 4) throw new Error('Insufficient headers in CSV');
 
-    let status = 'upcoming';
-    if (now.isAfter(endDate)) {
-      status = selectedContest.rank_sheet ? 'ranked' : 'waiting';
-    } else if (now.isAfter(startDate)) {
-      status = 'running';
+        const problemColumns = headers
+          .slice(4)
+          .map(col => {
+            if (!col || typeof col !== 'string') return '';
+            const match = col.match(/([A-Za-z])\s*(\d+)\s*\/\s*(\d+)/);
+            return match ? `${match[1]} (${match[2]}/${match[3]})` : col;
+          })
+          .filter(col => col);
+
+        const firstSolvers = {};
+        headers.slice(4).forEach(colName => {
+          let earliestTime = Infinity;
+          let earliestRowIndex = -1;
+          data.forEach((row, rowIndex) => {
+            const submission = row[colName] || '';
+            const { isSolved, seconds } = parseSubmission(submission);
+            if (isSolved && seconds < earliestTime) {
+              earliestTime = seconds;
+              earliestRowIndex = rowIndex;
+            }
+          });
+          if (earliestRowIndex !== -1) {
+            firstSolvers[colName] = earliestRowIndex;
+          }
+        });
+
+        setRankData({ headers, data, problemColumns, firstSolvers });
+        setFilteredRankData(data);
+      } catch (err) {
+        setError(`Failed to load rank data: ${err.message}`);
+        console.error('Error fetching rank sheet:', err);
+      } finally {
+        setIsLoadingRank(false);
+      }
     }
-    setContestStatus(status);
 
-    if (status === 'upcoming') {
-      const updateCountdown = () => {
-        const nowTime = moment.tz('Asia/Dhaka');
-        const diff = startDate.diff(nowTime);
+    // Update contest status and countdown every second
+    const updateStatusAndCountdown = () => {
+      const startDate = moment.tz(selectedContest.date, 'YYYY-MM-DD HH:mm', 'Asia/Dhaka');
+      if (!startDate.isValid()) {
+        setError(`Invalid contest start time format: ${selectedContest.date}`);
+        setCountdown(null);
+        setContestStatus('');
+        console.error(`Invalid start time: ${selectedContest.date}`);
+        return;
+      }
+      const durationSeconds = parseDuration(selectedContest.duration);
+      const endDate = startDate.clone().add(durationSeconds, 'seconds');
+      const now = moment.tz('Asia/Dhaka');
+
+      // Debug timing
+      console.log('Contest:', selectedContest.name, {
+        Now: now.format('YYYY-MM-DD HH:mm:ss'),
+        Start: startDate.format('YYYY-MM-DD HH:mm:ss'),
+        End: endDate.format('YYYY-MM-DD HH:mm:ss'),
+        DurationSeconds: durationSeconds,
+        RankSheet: !!selectedContest.rank_sheet,
+      });
+
+      let status = 'upcoming';
+      if (now.isAfter(endDate)) {
+        status = selectedContest.rank_sheet ? 'ranked' : 'waiting';
+      } else if (now.isAfter(startDate)) {
+        status = 'running';
+      }
+      setContestStatus(status);
+
+      if (status === 'upcoming') {
+        const diff = startDate.diff(now);
         if (diff <= 0) {
           setContestStatus('running');
           setCountdown(
             <div className="text-center">
               <p className="text-gray-200 text-2xl font-semibold mb-4 font-['Inter']">Contest is running!</p>
               <a
-                href={selectedContest.link + '#rank'}
+                href={selectedContest.link || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 hover:bg-indigo-900 hover:scale-105 transition-all duration-300"
+                className="inline-block px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 hover:scale-105 transition-all duration-300 text-sm font-semibold font-['Inter']"
               >
                 View Live Rank
               </a>
@@ -133,103 +207,53 @@ function Contests() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center justify-center">
             <div className="bg-gray-800/20 p-3 rounded-lg">
               <span className="text-3xl font-bold text-indigo-600">{Math.floor(duration.asDays())}</span>
-              <p className="text-xs text-gray-400 text-center font-['Inter']">Days</p>
+              <p className="text-xs text-gray-400 font-['Inter']">Days</p>
             </div>
             <div className="bg-gray-800/20 p-3 rounded-lg">
               <span className="text-3xl font-bold text-indigo-600">{duration.hours().toString().padStart(2, '0')}</span>
-              <p className="text-xs text-gray-400 text-center font-['Inter']">Hours</p>
+              <p className="text-xs text-gray-400 font-['Inter']">Hours</p>
             </div>
             <div className="bg-gray-800/20 p-3 rounded-lg">
               <span className="text-3xl font-bold text-indigo-600">{duration.minutes().toString().padStart(2, '0')}</span>
-              <p className="text-xs text-gray-400 text-center font-['Inter']">Minutes</p>
+              <p className="text-xs text-gray-400 font-['Inter']">Minutes</p>
             </div>
             <div className="bg-gray-800/20 p-3 rounded-lg">
               <span className="text-3xl font-bold text-indigo-600">{duration.seconds().toString().padStart(2, '0')}</span>
-              <p className="text-xs text-gray-400 text-center font-['Inter']">Seconds</p>
+              <p className="text-xs text-gray-400 font-['Inter']">Seconds</p>
             </div>
           </div>
         );
-      };
-      updateCountdown();
-      const interval = setInterval(updateCountdown, 1000);
-      return () => clearInterval(interval);
-    } else if (status === 'running') {
-      setCountdown(
-        <div className="text-center">
-          <p className="text-gray-200 text-2xl font-semibold mb-4 font-['Inter']">Contest is running!</p>
-          <a
-            href={selectedContest.link + '#rank'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 hover:scale-105 transition-all duration-300 text-sm font-semibold font-['Inter']">
-            View Live Rank
-          </a>
-        </div>
-      );
-    } else if (status === 'waiting') {
-      setCountdown(
-        <p className="text-gray-200 text-2xl font-semibold text-center font-['Inter']">
-          Waiting for final ranks to be added.
-        </p>
-      );
-    } else if (status === 'ranked') {
-      setCountdown(null);
-      async function loadRankData() {
-        try {
-          setIsLoadingRank(true);
-          setError(null);
-          const response = await fetchWithRetry(selectedContest.rank_sheet);
-          const csv = await response.text();
-          if (!csv.trim()) throw new Error('No rank data available');
-          const parsed = Papa.parse(csv.trim(), {
-            header: true,
-            skipEmptyLines: true,
-            dynamicTyping: false,
-          });
-          if (parsed.errors.length > 0) throw new Error(`Rank CSV parsing error: ${parsed.errors[0].message}`);
-          const data = parsed.data;
-          if (!data || data.length === 0) throw new Error('No valid data rows found');
-          const headers = Object.keys(data[0] || {});
-          if (headers.length < 4) throw new Error('Insufficient headers in CSV');
-
-          const problemColumns = headers
-            .slice(4)
-            .map(col => {
-              if (!col || typeof col !== 'string') return '';
-              const match = col.match(/([A-Za-z])\s*(\d+)\s*\/\s*(\d+)/);
-              return match ? `${match[1]} (${match[2]}/${match[3]})` : col;
-            })
-            .filter(col => col);
-
-          const firstSolvers = {};
-          headers.slice(4).forEach(colName => {
-            let earliestTime = Infinity;
-            let earliestRowIndex = -1;
-            data.forEach((row, rowIndex) => {
-              const submission = row[colName] || '';
-              const { isSolved, seconds } = parseSubmission(submission);
-              if (isSolved && seconds < earliestTime) {
-                earliestTime = seconds;
-                earliestRowIndex = rowIndex;
-              }
-            });
-            if (earliestRowIndex !== -1) {
-              firstSolvers[colName] = earliestRowIndex;
-            }
-          });
-
-          setRankData({ headers, data, problemColumns, firstSolvers });
-          setFilteredRankData(data);
-        } catch (err) {
-          setError(`Failed to load rank data: ${err.message}`);
-          console.error('Error fetching rank sheet:', err);
-        } finally {
-          setIsLoadingRank(false);
-        }
+      } else if (status === 'running') {
+        setCountdown(
+          <div className="text-center">
+            <p className="text-gray-200 text-2xl font-semibold mb-4 font-['Inter']">Contest is running!</p>
+            <a
+              href={selectedContest.link || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 hover:scale-105 transition-all duration-300 text-sm font-semibold font-['Inter']"
+            >
+              View Live Rank
+            </a>
+          </div>
+        );
+      } else if (status === 'waiting') {
+        setCountdown(
+          <p className="text-gray-200 text-2xl font-semibold text-center font-['Inter']">
+            Waiting for final ranks to be added.
+          </p>
+        );
+      } else if (status === 'ranked') {
+        setCountdown(null);
+        if (!rankData) fetchRankData();
       }
-      loadRankData();
-    }
-  }, [selectedContest]);
+    };
+
+    // Run immediately and every second
+    updateStatusAndCountdown();
+    const interval = setInterval(updateStatusAndCountdown, 10000);
+    return () => clearInterval(interval);
+  }, [selectedContest, rankData]);
 
   const handleContestSelect = e => {
     const id = e.target.value;
@@ -240,7 +264,7 @@ function Contests() {
     setCountdown(null);
     setError(null);
     setIsLoadingRank(false);
-    navigate(id ? `/contests?id=${id}` : '/contests'); // Updated navigate
+    navigate(id ? `/contests?id=${id}` : '/contests');
   };
 
   const handleRankFilter = e => {
@@ -255,6 +279,7 @@ function Contests() {
     setFilteredRankData(filtered);
   };
 
+  // Loading state
   if (isLoadingContests) {
     return (
       <motion.div
@@ -262,7 +287,7 @@ function Contests() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="min-h-screen bg-gray-900 flex flex-col"
+        className="min-h-screen bg-gray-900 flex flex-col items-center justify-center"
       >
         <main className="max-w-7xl mx-auto px-4 pt-20 pb-12 flex-grow">
           <p className="text-gray-200 text-2xl font-semibold text-center font-['Inter']">Loading contests...</p>
@@ -271,6 +296,7 @@ function Contests() {
     );
   }
 
+  // Error state with retry option
   if (error && !selectedContest) {
     return (
       <motion.div
@@ -278,15 +304,28 @@ function Contests() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="min-h-screen bg-gray-900 flex flex-col"
+        className="min-h-screen bg-gray-900 flex flex-col items-center justify-center"
       >
         <main className="max-w-7xl mx-auto px-4 pt-20 pb-12 flex-grow">
-          <p className="text-red-500 text-2xl font-semibold text-center font-['Inter']">{error}</p>
+          <p className="text-red-500 text-2xl font-semibold text-center font-['Inter'] mb-4">{error}</p>
+          <button
+            onClick={() => {
+              setIsLoadingContests(true);
+              setError(null);
+              setContests([]);
+              setSelectedContest(null);
+              navigate('/contests');
+            }}
+            className="mx-auto block px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 hover:scale-105 transition-all duration-300 text-sm font-semibold font-['Inter']"
+          >
+            Retry
+          </button>
         </main>
       </motion.div>
     );
   }
 
+  // No contests available
   if (!selectedContest && contests.length === 0) {
     return (
       <motion.div
@@ -294,7 +333,7 @@ function Contests() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="min-h-screen bg-gray-900 flex flex-col"
+        className="min-h-screen bg-gray-900 flex flex-col items-center justify-center"
       >
         <main className="max-w-7xl mx-auto px-4 pt-20 pb-12 flex-grow">
           <p className="text-gray-200 text-2xl font-semibold text-center font-['Inter']">No contests available</p>
@@ -331,7 +370,7 @@ function Contests() {
             <div className="space-y-4">
               <p className="text-base text-gray-200 font-['Inter'] flex items-center gap-2 group-hover:text-gray-100 transition-colors">
                 <FaCalendar className="text-indigo-400 group-hover:text-indigo-300" />
-                {moment.tz(selectedContest.date, 'Asia/Dhaka').format('MMMM D, YYYY, h:mm A')}
+                {moment.tz(selectedContest.date, 'YYYY-MM-DD HH:mm', 'Asia/Dhaka').format('MMMM D, YYYY, h:mm A')}
               </p>
               <p className="text-base text-gray-200 font-['Inter'] flex items-center gap-2 group-hover:text-gray-100 transition-colors">
                 <FaClock className="text-indigo-400 group-hover:text-indigo-300" />
@@ -472,7 +511,8 @@ function Contests() {
                           <tr>
                             <td
                               colSpan={5 + (rankData.problemColumns?.length || 0)}
-                              className="px-4 py-2 border-b border-gray-700 text-center font-semibold text-gray-200 font-['Inter']">
+                              className="px-4 py-2 border-b border-gray-700 text-center font-semibold text-gray-200 font-['Inter']"
+                            >
                               No participants found.
                             </td>
                           </tr>
