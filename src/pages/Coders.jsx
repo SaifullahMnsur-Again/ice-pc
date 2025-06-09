@@ -3,9 +3,7 @@ import { motion } from 'framer-motion';
 import Papa from 'papaparse';
 import { fetchWithRetry } from '../utils/fetchUtils';
 import { getCodeforcesRank, handleLink, getYearPrefix } from '../utils/coderUtils';
-
-const CODERS_CSV_URL =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_rvXyZpvU4zsqMZ10-px2NULkBw5rfCTGUD2HHVYDAjUdZuDuxbgjtkjGtIWHD-lPkvHzLjlnC9Tq/pub?gid=1893792376&single=true&output=csv';
+import { CODERS_CSV_URL } from '../constants';
 
 function Coders() {
   const [coders, setCoders] = useState([]);

@@ -1,3 +1,13 @@
+// ice-pc\src\components\Footer.jsx
+import React from 'react';
+import facebook from "/assets/images/facebook.png";
+import group from "/assets/images/group.png";
+import codeforces from "/assets/images/codeforces.png";
+import github from "/assets/images/github.png";
+import leetcode from "/assets/images/leetcode.png";
+import messenger from "/assets/images/messenger.png";
+import linkedin from "/assets/images/linkedin.png";
+
 function Footer() {
   return (
     <footer className="bg-gradient-to-r from-indigo-950 to-purple-950 text-gray-200 py-8">
@@ -15,7 +25,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="https://saifullahmnsur-again.github.io/ice-pc/assets/images/facebook.png"
+                src={facebook} // Updated path
                 alt="ICE PC Facebook Page"
                 className="w-10 h-10 object-contain invert"
               />
@@ -30,7 +40,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="https://saifullahmnsur-again.github.io/ice-pc/assets/images/group.png"
+                src={group} // Updated path
                 alt="ICE PC Facebook Group"
                 className="w-10 h-10 object-contain invert"
               />
@@ -45,7 +55,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="https://saifullahmnsur-again.github.io/ice-pc/assets/images/messenger.png"
+                src={messenger} // Updated path
                 alt="ICE PC Messenger Group"
                 className="w-10 h-10 object-contain invert"
               />
@@ -66,7 +76,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="https://saifullahmnsur-again.github.io/ice-pc/assets/images/github.png"
+                src={github} // Updated path
                 alt="GitHub Profile"
                 className="w-10 h-10 object-contain invert"
               />
@@ -81,7 +91,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="https://saifullahmnsur-again.github.io/ice-pc/assets/images/codeforces.png"
+                src={codeforces} // Updated path
                 alt="Codeforces Profile"
                 className="w-10 h-10 object-contain"
               />
@@ -96,7 +106,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="https://saifullahmnsur-again.github.io/ice-pc/assets/images/leetcode.png"
+                src={leetcode} // Updated path
                 alt="LeetCode Profile"
                 className="w-10 h-10 object-contain invert"
               />
@@ -111,7 +121,7 @@ function Footer() {
               className="transform hover:scale-105 transition-all duration-300"
             >
               <img
-                src="https://saifullahmnsur-again.github.io/ice-pc/assets/images/linkedin.png"
+                src={linkedin} // Updated path
                 alt="LinkedIn Profile"
                 className="w-10 h-10 object-contain invert"
               />

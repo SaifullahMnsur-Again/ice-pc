@@ -5,16 +5,17 @@
   "private": true,
   "homepage": "https://saifullahmnsur-again.github.io/ice-pc",
   "dependencies": {
+    "autoprefixer": "^10.4.14",
+    "axios": "^1.9.0",
     "framer-motion": "^4.1.17",
     "moment": "^2.29.4",
     "moment-timezone": "^0.5.43",
     "papaparse": "^5.4.1",
+    "postcss": "^8.4.27",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^5.3.0",
     "react-router-dom": "^6.22.0",
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.27",
     "tailwindcss": "^3.3.3"
   },
   "scripts": {
@@ -25,7 +26,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.1.4",
-    "gh-pages": "^6.1.1"
+    "gh-pages": "^6.1.1",
+    "vite": "^5.1.4"
   }
 }

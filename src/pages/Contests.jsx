@@ -1,14 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import moment from 'moment-timezone';
 import Papa from 'papaparse';
 import { fetchWithRetry } from '../utils/fetchUtils';
-import { parseDuration, parseSubmission, formatDurationToText } from '../utils/contestUtils';
+import { parseDuration, parseSubmission, formatDurationToText, parseProblemName, formatSubmissionData } from '../utils/contestUtils';
 import { FaTrophy, FaCalendar, FaClock, FaUsers, FaLock, FaInfoCircle } from 'react-icons/fa';
-
-const CONTEST_CSV_URL =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vSXSB-zO1tuSWPCZEgENWdwJJezIyqmlksdwAulBsawNFVekKYlGn6dS0imxMq5qRNjHtB8MUWF0QLX/pub?gid=1861808501&single=true&output=csv';
+import { CONTEST_CSV_URL } from '../constants'; // Imported from new constants file
 
 function Contests() {
   const [contests, setContests] = useState([]);
@@ -30,15 +28,24 @@ function Contests() {
       try {
         setIsLoadingContests(true);
         setError(null);
+        console.log('Attempting to fetch contest CSV from:', CONTEST_CSV_URL);
         const response = await fetchWithRetry(CONTEST_CSV_URL);
         const csv = await response.text();
-        if (!csv.trim()) throw new Error('No contest data available');
+        
+        if (!csv.trim()) {
+          throw new Error('Contest CSV is empty or contains only whitespace.');
+        }
+        
         const parsed = Papa.parse(csv.trim(), {
           header: true,
           skipEmptyLines: true,
           dynamicTyping: false,
         });
-        if (parsed.errors.length > 0) throw new Error(`CSV parsing error: ${parsed.errors[0].message}`);
+
+        if (parsed.errors.length > 0) {
+          throw new Error(`CSV parsing error for contests: ${parsed.errors[0].message}`);
+        }
+        
         const data = parsed.data
           .map(row => ({
             id: row.id || '',
@@ -53,13 +60,18 @@ function Contests() {
             coders: row.coders || '',
           }))
           .sort((a, b) => moment.tz(b.date, 'YYYY-MM-DD HH:mm', 'Asia/Dhaka').diff(moment.tz(a.date, 'YYYY-MM-DD HH:mm', 'Asia/Dhaka')));
-        if (data.length === 0) throw new Error('No contests found');
+        
+        if (data.length === 0) {
+          throw new Error('No contest data found after parsing CSV. Check CSV headers/content.');
+        }
+        
         setContests(data);
         const id = searchParams.get('id');
         setSelectedContest(id ? data.find(c => c.id === id) : data[0]);
+        console.log('Contests fetched successfully:', data);
       } catch (err) {
         setError(`Failed to load contests: ${err.message}`);
-        console.error('Error fetching contests:', err);
+        console.error('Detailed Error fetching contests:', err);
       } finally {
         setIsLoadingContests(false);
       }
@@ -75,15 +87,25 @@ function Contests() {
     async function fetchCoders() {
       if (!selectedContest.coders) return;
       try {
+        console.log('Attempting to fetch coders CSV from:', selectedContest.coders);
         const response = await fetchWithRetry(selectedContest.coders);
         const csv = await response.text();
-        if (!csv.trim()) return;
+        
+        if (!csv.trim()) {
+          console.warn('Coders CSV is empty or contains only whitespace. Skipping name mapping.');
+          return;
+        }
+        
         const parsed = Papa.parse(csv.trim(), {
           header: true,
           skipEmptyLines: true,
           dynamicTyping: false,
         });
-        if (parsed.errors.length > 0) throw new Error(`Coders CSV parsing error: ${parsed.errors[0].message}`);
+
+        if (parsed.errors.length > 0) {
+          throw new Error(`Coders CSV parsing error: ${parsed.errors[0].message}`);
+        }
+        
         const nameMap = parsed.data.reduce((acc, row) => {
           if (row.Vjudge && row.Name && row.Name.trim() !== '') {
             acc[row.Vjudge] = row.Name;
@@ -91,8 +113,10 @@ function Contests() {
           return acc;
         }, {});
         setVjudgeToName(nameMap);
+        console.log('Coders fetched successfully:', nameMap);
       } catch (err) {
-        console.error('Error fetching coders:', err);
+        console.error('Detailed Error fetching coders:', err);
+        // Do not set global error for coders, as it's not critical for main functionality
       }
     }
     fetchCoders();
@@ -101,20 +125,40 @@ function Contests() {
     async function fetchRankData() {
       try {
         setIsLoadingRank(true);
-        setError(null);
+        setError(null); // Clear previous rank errors
+        if (!selectedContest.rank_sheet) {
+          console.log('No rank sheet URL provided for this contest.');
+          setRankData(null); // Explicitly clear rank data if no sheet is linked
+          return;
+        }
+
+        console.log('Attempting to fetch rank CSV from:', selectedContest.rank_sheet);
         const response = await fetchWithRetry(selectedContest.rank_sheet);
         const csv = await response.text();
-        if (!csv.trim()) throw new Error('No rank data available');
+        
+        if (!csv.trim()) {
+          throw new Error('Rank CSV is empty or contains only whitespace.');
+        }
+        
         const parsed = Papa.parse(csv.trim(), {
           header: true,
           skipEmptyLines: true,
           dynamicTyping: false,
         });
-        if (parsed.errors.length > 0) throw new Error(`Rank CSV parsing error: ${parsed.errors[0].message}`);
+
+        if (parsed.errors.length > 0) {
+          throw new Error(`CSV parsing error for rank sheet: ${parsed.errors[0].message}`);
+        }
+        
         const data = parsed.data;
-        if (!data || data.length === 0) throw new Error('No valid data rows found');
+        if (!data || data.length === 0) {
+          throw new Error('No valid data rows found in rank CSV.');
+        }
+        
         const headers = Object.keys(data[0] || {});
-        if (headers.length < 4) throw new Error('Insufficient headers in CSV');
+        if (headers.length < 4) {
+          throw new Error('Insufficient headers in rank CSV. Expected at least "Rank", "Team", "Solved", "Penalty".');
+        }
 
         const problemColumns = headers
           .slice(4)
@@ -128,25 +172,30 @@ function Contests() {
         const firstSolvers = {};
         headers.slice(4).forEach(colName => {
           let earliestTime = Infinity;
-          let earliestRowIndex = -1;
-          data.forEach((row, rowIndex) => {
+          let firstSolverVjudgeHandle = null; // Store vjudgeHandle instead of rowIndex
+
+          data.forEach(row => { // Iterate through all data to find first solver
+            const team = row['Team'] || '';
+            const vjudgeHandle = team.match(/^([^\(]+)\(/)?.[1]?.trim() || team.trim();
             const submission = row[colName] || '';
             const { isSolved, seconds } = parseSubmission(submission);
+
             if (isSolved && seconds < earliestTime) {
               earliestTime = seconds;
-              earliestRowIndex = rowIndex;
+              firstSolverVjudgeHandle = vjudgeHandle;
             }
           });
-          if (earliestRowIndex !== -1) {
-            firstSolvers[colName] = earliestRowIndex;
+          if (firstSolverVjudgeHandle) {
+            firstSolvers[colName] = firstSolverVjudgeHandle;
           }
         });
-
+        
         setRankData({ headers, data, problemColumns, firstSolvers });
         setFilteredRankData(data);
+        console.log('Rank data fetched and processed successfully.');
       } catch (err) {
         setError(`Failed to load rank data: ${err.message}`);
-        console.error('Error fetching rank sheet:', err);
+        console.error('Detailed Error fetching rank sheet:', err);
       } finally {
         setIsLoadingRank(false);
       }
@@ -165,15 +214,6 @@ function Contests() {
       const durationSeconds = parseDuration(selectedContest.duration);
       const endDate = startDate.clone().add(durationSeconds, 'seconds');
       const now = moment.tz('Asia/Dhaka');
-
-      // Debug timing
-      console.log('Contest:', selectedContest.name, {
-        Now: now.format('YYYY-MM-DD HH:mm:ss'),
-        Start: startDate.format('YYYY-MM-DD HH:mm:ss'),
-        End: endDate.format('YYYY-MM-DD HH:mm:ss'),
-        DurationSeconds: durationSeconds,
-        RankSheet: !!selectedContest.rank_sheet,
-      });
 
       let status = 'upcoming';
       if (now.isAfter(endDate)) {
@@ -245,25 +285,26 @@ function Contests() {
         );
       } else if (status === 'ranked') {
         setCountdown(null);
-        if (!rankData) fetchRankData();
+        // Only attempt to fetch rank data if rankData is not yet loaded and contest status is 'ranked'
+        if (!rankData) fetchRankData(); 
       }
     };
 
-    // Run immediately and every second
+    // Run immediately and every 5 seconds for countdown to save resources
     updateStatusAndCountdown();
-    const interval = setInterval(updateStatusAndCountdown, 10000);
+    const interval = setInterval(updateStatusAndCountdown, 5000); 
     return () => clearInterval(interval);
-  }, [selectedContest, rankData]);
+  }, [selectedContest, rankData]); // Added rankData to dependency array to re-run when it's null (e.g. on contest select)
 
   const handleContestSelect = e => {
     const id = e.target.value;
     const selected = contests.find(c => c.id === id);
     setSelectedContest(selected);
-    setRankData(null);
+    setRankData(null); // Clear rank data when contest changes to trigger re-fetch
     setFilteredRankData([]);
     setCountdown(null);
-    setError(null);
-    setIsLoadingRank(false);
+    setError(null); // Clear any existing errors
+    setIsLoadingRank(false); // Reset loading state for rank data
     navigate(id ? `/contests?id=${id}` : '/contests');
   };
 
@@ -279,7 +320,7 @@ function Contests() {
     setFilteredRankData(filtered);
   };
 
-  // Loading state
+  // Loading state for initial contest fetch
   if (isLoadingContests) {
     return (
       <motion.div
@@ -296,7 +337,7 @@ function Contests() {
     );
   }
 
-  // Error state with retry option
+  // Error state for initial contest fetch (if no selectedContest)
   if (error && !selectedContest) {
     return (
       <motion.div
@@ -310,11 +351,12 @@ function Contests() {
           <p className="text-red-500 text-2xl font-semibold text-center font-['Inter'] mb-4">{error}</p>
           <button
             onClick={() => {
+              // Reset states to retry fetching contests
               setIsLoadingContests(true);
               setError(null);
               setContests([]);
               setSelectedContest(null);
-              navigate('/contests');
+              navigate('/contests'); // Optionally navigate to clear search params
             }}
             className="mx-auto block px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 hover:scale-105 transition-all duration-300 text-sm font-semibold font-['Inter']"
           >
@@ -325,7 +367,7 @@ function Contests() {
     );
   }
 
-  // No contests available
+  // No contests available after loading
   if (!selectedContest && contests.length === 0) {
     return (
       <motion.div
@@ -370,7 +412,7 @@ function Contests() {
             <div className="space-y-4">
               <p className="text-base text-gray-200 font-['Inter'] flex items-center gap-2 group-hover:text-gray-100 transition-colors">
                 <FaCalendar className="text-indigo-400 group-hover:text-indigo-300" />
-                {moment.tz(selectedContest.date, 'YYYY-MM-DD HH:mm', 'Asia/Dhaka').format('MMMM D, YYYY, h:mm A')}
+                {moment.tz(selectedContest.date, 'YYYY-MM-DD HH:mm', 'Asia/Dhaka').format('MMMM D,YYYY, h:mm A')}
               </p>
               <p className="text-base text-gray-200 font-['Inter'] flex items-center gap-2 group-hover:text-gray-100 transition-colors">
                 <FaClock className="text-indigo-400 group-hover:text-indigo-300" />
@@ -438,12 +480,12 @@ function Contests() {
                         <tr>
                           <th className="px-4 py-3 border-b border-gray-700 font-semibold font-['Inter']">Rank</th>
                           <th className="px-4 py-3 border-b border-gray-700 font-semibold font-['Inter']">Name</th>
-                          <th className="px-4 py-3 border-b border-gray-700 font-semibold font-['Inter']">Vjudge</th>
                           <th className="px-4 py-3 border-b border-gray-700 font-semibold font-['Inter']">Solved</th>
                           <th className="px-4 py-3 border-b border-gray-700 font-semibold font-['Inter']">Penalty</th>
                           {rankData.problemColumns.map(col => (
                             <th key={col} className="px-4 py-3 border-b border-gray-700 font-semibold font-['Inter']">
-                              {col}
+                              <div>{parseProblemName(col)[0]}</div>
+                              <div>{parseProblemName(col)[1]}</div>
                             </th>
                           ))}
                         </tr>
@@ -458,24 +500,36 @@ function Contests() {
                             const name = vjudgeToName[vjudgeHandle] || vjudgeHandle;
                             if (!name || !name.trim()) return null;
 
-                            let totalMinutes = 0;
-                            let totalIncorrect = 0;
+                            let totalAcceptedTimeSeconds = 0; // Renamed for clarity
+                            let totalIncorrectSubmissionsForAccepted = 0; // Renamed for clarity
                             rankData.problemColumns.forEach((_, colIndex) => {
                               const colName = rankData.headers[4 + colIndex];
                               const submission = row[colName] || '';
-                              const { isSolved, minutes, incorrect } = parseSubmission(submission);
+                              // Destructure only isSolved, seconds, and incorrect
+                              const { isSolved, seconds, incorrect } = parseSubmission(submission);
                               if (isSolved) {
-                                totalMinutes += minutes;
-                                totalIncorrect += incorrect;
+                                totalAcceptedTimeSeconds += seconds;
+                                totalIncorrectSubmissionsForAccepted += incorrect;
                               }
                             });
-                            const totalPenalty = Math.round(totalMinutes + totalIncorrect * 20);
+                            // Calculate total penalty in minutes
+                            const totalPenalty = Math.floor((totalAcceptedTimeSeconds / 60) + (totalIncorrectSubmissionsForAccepted * 20));
 
                             return (
                               <tr key={rowIndex} className="transition-all duration-300 hover:bg-gray-800/50">
                                 <td className="px-4 py-2 border-b border-gray-700 text-center text-gray-200 font-['Inter']">{rowIndex + 1}</td>
-                                <td className="px-4 py-2 border-b border-gray-700 text-gray-200 font-['Inter']">{name}</td>
-                                <td className="px-4 py-2 border-b border-gray-700 font-semibold">
+                                <td className="px-4 py-2 border-b border-gray-700 text-gray-200 font-['Inter']">
+                                  <div className="font-semibold">{name}</div>
+                                  <a
+                                    href={`https://vjudge.net/user/${vjudgeHandle}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium text-indigo-400 hover:underline text-xs"
+                                  >
+                                    {vjudgeHandle}
+                                  </a>
+                                </td>
+                                {/* <td className="px-4 py-2 border-b border-gray-700 font-semibold">
                                   <a
                                     href={`https://vjudge.net/user/${vjudgeHandle}`}
                                     target="_blank"
@@ -484,23 +538,55 @@ function Contests() {
                                   >
                                     {vjudgeHandle}
                                   </a>
-                                </td>
+                                </td> */}
                                 <td className="px-4 py-2 border-b border-gray-700 text-center text-gray-200 font-['Inter']">{score}</td>
                                 <td className="px-4 py-2 border-b border-gray-700 text-center text-gray-200 font-['Inter']">{totalPenalty}</td>
                                 {rankData.problemColumns.map((_, colIndex) => {
                                   const colName = rankData.headers[4 + colIndex];
-                                  const cellValue = row[colName] || '';
-                                  const { isSolved, incorrect } = parseSubmission(cellValue);
-                                  const isFirstSolver = rankData.firstSolvers[colName] === rowIndex;
-                                  const cellClass = isSolved
-                                    ? isFirstSolver ? 'bg-green-500' : 'bg-green-800'
-                                    : incorrect > 0 ? 'bg-gray-700' : '';
+                                  let  cellValue = row[colName] || '';
+                                  const { isSolved, incorrect, seconds } = parseSubmission(cellValue);
+                                  cellValue = formatSubmissionData(cellValue);
+                                  console.log(`${cellValue}`);
+                                  
+                                  // Check if this participant's vjudgeHandle matches the first solver for this problem
+                                  const isFirstSolver = rankData.firstSolvers[colName] === vjudgeHandle; 
+
+                                  let cellBgClass = "";
+                                  let cellTextColorClass = "text-gray-200"; // Default text color for untouched cells
+
+                                  if (isSolved) {
+                                    if (isFirstSolver) {
+                                      cellBgClass = 'bg-yellow-900'; // First solve: a distinct yellow
+                                      cellTextColorClass = 'text-yellow-300'; // Contrasting text for yellow
+                                    } else {
+                                      cellBgClass = 'bg-green-900'; // Solved: a distinct green
+                                      cellTextColorClass = 'text-green-300'; // Contrasting text for green
+                                    }
+                                  } else if (incorrect > 0) {
+                                    cellBgClass = 'bg-red-900'; // Incorrect attempts: a distinct red
+                                    cellTextColorClass = 'text-red-300'; // Contrasting text for red
+                                  } else {
+                                    // Default background for unsolved/untouched cells, keep it subtle
+                                    cellBgClass = 'bg-gray-800/20'; // Matching table background or slightly different
+                                    cellTextColorClass = 'text-gray-400'; // Lighter text for subtle cell
+                                  }
                                   return (
                                     <td
                                       key={colName}
-                                      className={`px-4 py-2 border-b border-gray-700 text-center text-gray-200 font-medium ${cellClass}`}
+                                      className={`px-4 py-2 border-b border-gray-700 text-center font-medium ${cellBgClass} ${cellTextColorClass}`}
                                     >
-                                      {cellValue}
+                                      {cellValue[0] && cellValue[1] ? (
+                                        <>
+                                          {cellValue[0]}<br/>
+                                          {cellValue[1]}
+                                        </>
+                                      ) : cellValue[0] ? (
+                                        cellValue[0]
+                                      ) : cellValue[1] ? (
+                                        cellValue[1]
+                                      ) : (
+                                        ''
+                                      )}
                                     </td>
                                   );
                                 })}
